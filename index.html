@@ -96,11 +96,11 @@ const ambient = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambient);
 const dir = new THREE.DirectionalLight(0xffffff, 0.9); dir.position.set(5,10,7); scene.add(dir);
 
 /* ========== Ground & Dividers ========== */
-const road = new THREE.Mesh(new THREE.PlaneGeometry(12, 500), new THREE.MeshStandardMaterial({color:0x0f172a, metalness:0.2, roughness:0.6}));
+const road = new THREE.Mesh(new THREE.PlaneGeometry(12, 500), new THREE.MeshStandardMaterial({color:0x112244, emissive:0x0a1a3a, emissiveIntensity:0.25, metalness:0.25, roughness:0.5}));
 road.rotation.x = -Math.PI/2; road.position.z = -200; scene.add(road);
 
 function createDivider(x, color=0x66ccff){
-  const mat = new THREE.MeshBasicMaterial({color: color, transparent:true, opacity:0.85});
+  const mat = new THREE.MeshBasicMaterial({color: color, transparent:true, opacity:1.0});
   const line = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 500), mat);
   line.rotation.x = -Math.PI/2; line.position.set(x, 0.02, -200); scene.add(line);
 }
@@ -109,7 +109,7 @@ createDivider(-3); createDivider(3);
 /* ========== Stars ========== */
 let stars = [];
 for(let i=0;i<120;i++){
-  const s = new THREE.Mesh(new THREE.SphereGeometry(0.04,6,6), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.6}));
+  const s = new THREE.Mesh(new THREE.SphereGeometry(0.04,6,6), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.85}));
   s.position.set((Math.random()-0.5)*80, Math.random()*30+6, -Math.random()*600);
   s.userData.base = Math.random()*2;
   scene.add(s); stars.push(s);
@@ -142,21 +142,28 @@ playerGroup.position.set(0,0,6); scene.add(playerGroup);
 /* ========== Obstacles & Coins ========== */
 let obstacles = [], coins = [];
 function createObstacle(x,z){
-  const ob = new THREE.Mesh(new THREE.BoxGeometry(1.2,1.5,1.2), new THREE.MeshStandardMaterial({color:0xcc5566}));
+  const ob = new THREE.Mesh(new THREE.BoxGeometry(1.2,1.5,1.2), new THREE.MeshStandardMaterial({color:0xff2222, emissive:0xaa0000, emissiveIntensity:1.2}));
   ob.position.set(x,0.75,z); ob.userData.type='obstacle'; scene.add(ob); obstacles.push(ob);
 }
 function createCoin(x,z){
   const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,0.18,32), new THREE.MeshStandardMaterial({
     color: 0xffd54f, metalness:0.95, roughness:0.18,
-    emissive: glowEnabled?0xffc761:0x000000, emissiveIntensity: glowEnabled?0.7:0
+    emissive: glowEnabled?0xffc761:0x000000, emissiveIntensity: glowEnabled?1.2:0
   }));
   coin.rotation.x = Math.PI/2; coin.position.set(x,0.8,z); coin.userData.type='coin'; scene.add(coin); coins.push(coin);
 }
+
 function spawnWave(){
   const free = Math.floor(Math.random()*3);
   for(let i=0;i<3;i++){
-    if(i!==free && Math.random()<0.85) createObstacle(lanes[i], -60 - Math.random()*40);
+    if(i!==free){ // только не на свободной линии
+      if(Math.random()<0.85) createObstacle(lanes[i], -60 - Math.random()*40);
+    }
   }
+  // всегда монета на свободной линии
+  createCoin(lanes[free], -65 - Math.random()*30);
+}
+
   if(Math.random()<0.75) createCoin(lanes[free], -65 - Math.random()*30);
 }
 
