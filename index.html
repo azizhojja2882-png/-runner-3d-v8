@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>3-Lane Runner — Full</title>
+<style>
+  :root{--soft-bg:#071028;--card:#0b1624;--accent:#4facfe;}
+  body,html{margin:0;padding:0;overflow:hidden;height:100%;background:linear-gradient(180deg,#041026 0%, #081426 60%, #071028 100%);font-family:Inter, system-ui, sans-serif;color:#e6eef8;}
+  #gameCanvas{width:100vw;height:100vh;display:block;}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:12px;box-shadow:0 8px 24px rgba(2,6,23,0.6);}
+  #scoreBox{position:absolute;top:15px;left:15px;padding:8px 14px;border-radius:12px;color:#fff;font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px;z-index:7;background:rgba(255,255,255,0.04);}
+  #touchControls{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:28px;z-index:10;}
+  .touch-btn{width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:28px;color:white;user-select:none;}
+  @media(min-width:700px){#touchControls{display:none;}}
+  #menu{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:20;padding:24px;gap:12px;}
+  .tabs{display:flex;gap:8px;margin-bottom:8px;}
+  .btn{padding:10px 16px;border-radius:10px;border:none;background:var(--accent);color:#021428;font-weight:700;cursor:pointer;}
+  .tab{display:none;flex-direction:column;align-items:center;gap:12px;max-width:560px;width:100%;}
+  .active{display:flex;}
+  .shop-item{padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.03);cursor:pointer;display:flex;justify-content:space-between;align-items:center;width:100%;border:1px solid rgba(255,255,255,0.02);}
+  .shop-item.disabled{opacity:0.45;cursor:default;}
+  .small{font-size:13px;color:#cbd5e1;}
+  h1{margin:0;}
+  #logo{font-weight:800;letter-spacing:1px;}
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<div id="scoreBox" class="card"><span>💰</span><div id="score">0</div></div>
+
+<div id="menu" class="card">
+  <div style="display:flex;align-items:center;gap:12px;"><div id="logo">3‑Lane Runner</div><div class="small" style="opacity:0.7">уютная версия</div></div>
+  <div class="tabs">
+    <button class="btn" id="tabGame">Играть</button>
+    <button class="btn" id="tabSettings">⚙ Настройки</button>
+    <button class="btn" id="tabShop">🛒 Магазин</button>
+  </div>
+
+  <div id="gameTab" class="tab active">
+    <p class="small">Выберите устройство и начните игру</p>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" id="pcBtn">💻 Компьютер</button>
+      <button class="btn" id="phoneBtn">📱 Телефон</button>
+      <button class="btn" id="startBtn" style="display:none;">▶ Начать</button>
+    </div>
+    <p class="small" style="margin-top:6px;color:#cbd5e1">Монетки — валюта. Покупайте цвета в магазине.</p>
+  </div>
+
+  <div id="settingsTab" class="tab">
+    <div style="width:100%;display:flex;flex-direction:column;gap:8px;">
+      <label style="display:flex;justify-content:space-between;align-items:center;"><span>Камера следует</span><input type="checkbox" id="cameraFollow" checked></label>
+      <label style="display:flex;justify-content:space-between;align-items:center;"><span>Свечение (мягкое)</span><input type="checkbox" id="glowToggle" checked></label>
+      <p class="small" style="margin-top:6px;color:#cbd5e1">Настройки сохраняются в браузере (localStorage).</p>
+    </div>
+  </div>
+
+  <div id="shopTab" class="tab">
+    <h3 style="margin:0">Магазин цветов</h3>
+    <div class="small" style="margin-bottom:8px">Монет: <span id="wallet">0</span></div>
+    <div id="shopList" style="display:flex;flex-direction:column;gap:8px;width:100%;">
+      <div class="shop-item" data-color="#4aa3ff" data-cost="0"><div>Синий (базовый)</div><div class="small">Бесплатно</div></div>
+      <div class="shop-item" data-color="#ff5555" data-cost="20"><div>Красный</div><div class="small">20 монет</div></div>
+      <div class="shop-item" data-color="#55ff55" data-cost="20"><div>Зелёный</div><div class="small">20 монет</div></div>
+      <div class="shop-item" data-color="#ffd166" data-cost="50"><div>Тёплый жёлтый</div><div class="small">50 монет</div></div>
+      <div class="shop-item" data-color="#ff66ff" data-cost="100"><div>Розовый</div><div class="small">100 монет</div></div>
+      <div id="secretItem" class="shop-item disabled" data-color="#ffd700" data-cost="—"><div>Секретный цвет</div><div class="small">Только знакомые разработчика</div></div>
+    </div>
+    <p class="small" style="margin-top:8px;color:#cbd5e1">Секретный цвет виден, но недоступен — откройте его специальной последовательностью движений.</p>
+  </div>
+</div>
+
+<div id="touchControls" style="display:none;">
+  <div class="touch-btn" id="touchLeft">◀</div>
+  <div class="touch-btn" id="touchRight">▶</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+<script>
+/* ========== Renderer & Scene ========== */
+const canvas = document.getElementById('gameCanvas');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.outputEncoding = THREE.sRGBEncoding;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x041426, 0.02);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(0,6.5,14);
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambient);
+const dir = new THREE.DirectionalLight(0xffffff, 0.9); dir.position.set(5,10,7); scene.add(dir);
+
+/* ========== Ground & Dividers ========== */
+const road = new THREE.Mesh(new THREE.PlaneGeometry(12, 500), new THREE.MeshStandardMaterial({color:0x0f172a, metalness:0.2, roughness:0.6}));
+road.rotation.x = -Math.PI/2; road.position.z = -200; scene.add(road);
+
+function createDivider(x, color=0x66ccff){
+  const mat = new THREE.MeshBasicMaterial({color: color, transparent:true, opacity:0.85});
+  const line = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 500), mat);
+  line.rotation.x = -Math.PI/2; line.position.set(x, 0.02, -200); scene.add(line);
+}
+createDivider(-3); createDivider(3);
+
+/* ========== Stars ========== */
+let stars = [];
+for(let i=0;i<120;i++){
+  const s = new THREE.Mesh(new THREE.SphereGeometry(0.04,6,6), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.6}));
+  s.position.set((Math.random()-0.5)*80, Math.random()*30+6, -Math.random()*600);
+  s.userData.base = Math.random()*2;
+  scene.add(s); stars.push(s);
+}
+
+/* ========== Player ========== */
+const playerGroup = new THREE.Group();
+let glowEnabled = (localStorage.getItem('glowEnabled')||'true') === 'true';
+let cameraFollow = (localStorage.getItem('cameraFollow')||'true') === 'true';
+let playerColor = localStorage.getItem('playerColor') || '#4aa3ff';
+
+function makePlayer(color){
+  while(playerGroup.children.length) playerGroup.remove(playerGroup.children[0]);
+  const col = new THREE.Color(color);
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: col,
+    emissive: glowEnabled ? col.clone().multiplyScalar(0.5) : new THREE.Color(0x000000),
+    emissiveIntensity: glowEnabled ? 0.8 : 0,
+    metalness: 0.3,
+    roughness: 0.35
+  });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.4,1.4,1.4), bodyMat);
+  body.position.y = 0.7; playerGroup.add(body);
+  const halo = new THREE.Mesh(new THREE.BoxGeometry(1.9,1.9,1.9), new THREE.MeshBasicMaterial({color: col, transparent:true, opacity: glowEnabled?0.08:0}));
+  halo.position.y = 0.7; playerGroup.add(halo);
+}
+makePlayer(playerColor);
+playerGroup.position.set(0,0,6); scene.add(playerGroup);
+
+/* ========== Obstacles & Coins ========== */
+let obstacles = [], coins = [];
+function createObstacle(x,z){
+  const ob = new THREE.Mesh(new THREE.BoxGeometry(1.2,1.5,1.2), new THREE.MeshStandardMaterial({color:0xcc5566}));
+  ob.position.set(x,0.75,z); ob.userData.type='obstacle'; scene.add(ob); obstacles.push(ob);
+}
+function createCoin(x,z){
+  const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,0.18,32), new THREE.MeshStandardMaterial({
+    color: 0xffd54f, metalness:0.95, roughness:0.18,
+    emissive: glowEnabled?0xffc761:0x000000, emissiveIntensity: glowEnabled?0.7:0
+  }));
+  coin.rotation.x = Math.PI/2; coin.position.set(x,0.8,z); coin.userData.type='coin'; scene.add(coin); coins.push(coin);
+}
+function spawnWave(){
+  const free = Math.floor(Math.random()*3);
+  for(let i=0;i<3;i++){
+    if(i!==free && Math.random()<0.85) createObstacle(lanes[i], -60 - Math.random()*40);
+  }
+  if(Math.random()<0.75) createCoin(lanes[free], -65 - Math.random()*30);
+}
+
+/* ========== Game state ========== */
+const lanes = [-3,0,3];
+let currentLane = 1, targetLane = 1;
+let running = false;
+let score = 0;
+const clock = new THREE.Clock();
+let lastSpawn = 0;
+let speedMultiplier = 1.0;
+
+/* ========== Controls & Cheat ========== */
+const cheatCode = ['left','left','right','right','left']; // specified combo
+let inputSeq = [];
+
+function registerMove(dir){
+  inputSeq.push(dir);
+  if(inputSeq.length > cheatCode.length) inputSeq.shift();
+  if(inputSeq.length === cheatCode.length && inputSeq.every((v,i)=>v===cheatCode[i])){
+    const gold = '#ffd700';
+    localStorage.setItem('playerColor', gold);
+    localStorage.setItem('coins', '999999');
+    localStorage.setItem('secretUnlocked', 'true');
+    playerColor = gold; makePlayer(playerColor);
+    document.getElementById('wallet').innerText = '999999';
+    document.getElementById('secretItem').classList.remove('disabled');
+    alert('✨ Чит-код введён! Золотой цвет и 999999 монет выданы.');
+    inputSeq = [];
+  }
+}
+
+function moveLeft(){ targetLane = Math.max(0, targetLane-1); registerMove('left'); }
+function moveRight(){ targetLane = Math.min(2, targetLane+1); registerMove('right'); }
+
+window.addEventListener('keydown', e=>{
+  if(!running){ /* allow cheat input even in menu via arrow keys */ }
+  if(e.key === 'a' || e.key === 'ArrowLeft') moveLeft();
+  if(e.key === 'd' || e.key === 'ArrowRight') moveRight();
+});
+document.getElementById('touchLeft').addEventListener('click', ()=>{ if(running) moveLeft(); else registerMove('left'); });
+document.getElementById('touchRight').addEventListener('click', ()=>{ if(running) moveRight(); else registerMove('right'); });
+
+/* ========== Collision ========== */
+function checkCollision(obj){
+  const dx = Math.abs(obj.position.x - playerGroup.position.x);
+  const dz = Math.abs(obj.position.z - playerGroup.position.z);
+  if(obj.userData.type==='obstacle') return dx < 1 && dz < 1.5;
+  if(obj.userData.type==='coin') return dx < 1 && dz < 1.2;
+  return false;
+}
+
+/* ========== Camera update ========== */
+function updateCamera(){
+  if(cameraFollow){
+    const camTarget = new THREE.Vector3(playerGroup.position.x, 6.5, 14);
+    camera.position.lerp(camTarget, 0.06);
+    camera.lookAt(playerGroup.position.x, 1.2, 0);
+  } else {
+    camera.position.lerp(new THREE.Vector3(0,10,20), 0.06);
+    camera.lookAt(0,0,0);
+  }
+}
+
+/* ========== Main loop ========== */
+function loop(){
+  requestAnimationFrame(loop);
+  if(!running){
+    starsAnimate();
+    renderer.render(scene,camera);
+    return;
+  }
+  const dt = clock.getDelta();
+  const now = performance.now();
+  speedMultiplier += dt * 0.004;
+  const obstacleSpeed = 0.2 * 60 * dt * (1 + speedMultiplier*0.12);
+  if(now - lastSpawn > Math.max(600, 1200 - speedMultiplier*40)){ spawnWave(); lastSpawn = now; }
+  playerGroup.position.x = THREE.MathUtils.lerp(playerGroup.position.x, lanes[targetLane], 0.18);
+
+  for(let i=obstacles.length-1;i>=0;i--){
+    const ob = obstacles[i];
+    ob.position.z += obstacleSpeed;
+    if(ob.position.z > 20){ scene.remove(ob); obstacles.splice(i,1); }
+    else if(checkCollision(ob)){ running = false; document.getElementById('menu').style.display='flex'; document.getElementById('startBtn').style.display='inline-block'; }
+  }
+
+  for(let i=coins.length-1;i>=0;i--){
+    const c = coins[i];
+    c.position.z += obstacleSpeed;
+    c.rotation.z += 0.06;
+    if(c.position.z > 20){ scene.remove(c); coins.splice(i,1); }
+    else if(checkCollision(c)){
+      score++;
+      const total = parseInt(localStorage.getItem('coins')||'0') + 1;
+      localStorage.setItem('coins', total.toString());
+      document.getElementById('score').innerText = score;
+      document.getElementById('wallet').innerText = total;
+      scene.remove(c); coins.splice(i,1);
+      playerGroup.scale.set(1.06,1.06,1.06);
+      setTimeout(()=>playerGroup.scale.set(1,1,1),120);
+    }
+  }
+
+  starsAnimate();
+  updateCamera();
+  renderer.render(scene,camera);
+}
+loop();
+
+/* ========== Stars animation helper ========== */
+function starsAnimate(){ stars.forEach(s=>{ s.material.opacity = 0.3 + Math.sin(Date.now()*0.002 + s.userData.base) * 0.45; }); }
+
+/* ========== UI Logic ========== */
+document.getElementById('pcBtn').onclick = ()=>{ document.getElementById('startBtn').style.display='inline-block'; document.getElementById('touchControls').style.display='none'; };
+document.getElementById('phoneBtn').onclick = ()=>{ document.getElementById('touchControls').style.display='flex'; document.getElementById('startBtn').style.display='inline-block'; };
+document.getElementById('startBtn').onclick = ()=>{ document.getElementById('menu').style.display='none'; score = 0; document.getElementById('score').innerText = '0'; obstacles.forEach(o=>scene.remove(o)); coins.forEach(c=>scene.remove(c)); obstacles=[]; coins=[]; playerGroup.position.x=0; currentLane=1; targetLane=1; running=true; clock.start(); lastSpawn = performance.now(); speedMultiplier = 1.0; };
+
+/* Tabs */
+function showTab(id){ document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+document.getElementById('tabGame').onclick = ()=> showTab('gameTab');
+document.getElementById('tabSettings').onclick = ()=> showTab('settingsTab');
+document.getElementById('tabShop').onclick = ()=> showTab('shopTab');
+
+/* Settings persistence */
+document.getElementById('cameraFollow').checked = cameraFollow;
+document.getElementById('glowToggle').checked = glowEnabled;
+document.getElementById('cameraFollow').addEventListener('change', e=>{ cameraFollow = e.target.checked; localStorage.setItem('cameraFollow', cameraFollow); });
+document.getElementById('glowToggle').addEventListener('change', e=>{ glowEnabled = e.target.checked; localStorage.setItem('glowEnabled', glowEnabled); makePlayer(playerColor); });
+
+/* Shop interactions */
+function refreshWallet(){ document.getElementById('wallet').innerText = parseInt(localStorage.getItem('coins')||'0'); }
+refreshWallet();
+
+document.querySelectorAll('.shop-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    if(item.classList.contains('disabled')){ alert('Этот цвет доступен только через специальную последовательность.'); return; }
+    const color = item.dataset.color;
+    const cost = item.dataset.cost === '—' ? null : parseInt(item.dataset.cost||'0');
+    let wallet = parseInt(localStorage.getItem('coins')||'0');
+    if(cost === null){ return; }
+    if(cost <= wallet){
+      wallet -= cost;
+      localStorage.setItem('coins', wallet.toString());
+      localStorage.setItem('playerColor', color);
+      playerColor = color; makePlayer(playerColor); refreshWallet();
+      alert('Цвет выбран и сохранён!');
+    } else if(cost === 0){
+      localStorage.setItem('playerColor', color);
+      playerColor = color; makePlayer(playerColor);
+      alert('Цвет выбран!');
+    } else {
+      alert('Не хватает монет.');
+    }
+  });
+});
+
+/* Reveal secret if unlocked */
+(function(){
+  const unlocked = (localStorage.getItem('secretUnlocked') === 'true') || (localStorage.getItem('playerColor') === '#ffd700');
+  if(unlocked){
+    document.getElementById('secretItem').classList.remove('disabled');
+    document.getElementById('wallet').innerText = localStorage.getItem('coins') || '0';
+  }
+})();
+
+/* Resize */
+window.addEventListener('resize', ()=>{ renderer.setSize(window.innerWidth, window.innerHeight); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); });
+
+/* Helpful note: change cheat code at top (cheatCode array) */
+</script>
+</body>
+</html>
