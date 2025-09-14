@@ -279,7 +279,12 @@ function starsAnimate(){ stars.forEach(s=>{ s.material.opacity = 0.3 + Math.sin(
 /* ========== UI Logic ========== */
 document.getElementById('pcBtn').onclick = ()=>{ document.getElementById('startBtn').style.display='inline-block'; document.getElementById('touchControls').style.display='none'; };
 document.getElementById('phoneBtn').onclick = ()=>{ document.getElementById('touchControls').style.display='flex'; document.getElementById('startBtn').style.display='inline-block'; };
-document.getElementById('startBtn').onclick = ()=>{ document.getElementById('menu').style.display='none'; score = 0; document.getElementById('score').innerText = '0'; obstacles.forEach(o=>scene.remove(o)); coins.forEach(c=>scene.remove(c)); obstacles=[]; coins=[]; playerGroup.position.x=0; currentLane=1; targetLane=1; running=true; clock.start(); lastSpawn = performance.now(); speedMultiplier = 1.0; };
+
+function startGame(){
+   document.getElementById('menu').style.display='none'; score = 0; document.getElementById('score').innerText = '0'; obstacles.forEach(o=>scene.remove(o)); coins.forEach(c=>scene.remove(c)); obstacles=[]; coins=[]; playerGroup.position.x=0; currentLane=1; targetLane=1; running=true; clock.start(); lastSpawn = performance.now(); speedMultiplier = 1.0; 
+}
+document.getElementById('startBtn').onclick = startGame;
+
 
 /* Tabs */
 function showTab(id){ document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); document.getElementById(id).classList.add('active'); }
@@ -333,6 +338,21 @@ document.querySelectorAll('.shop-item').forEach(item=>{
 window.addEventListener('resize', ()=>{ renderer.setSize(window.innerWidth, window.innerHeight); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); });
 
 /* Helpful note: change cheat code at top (cheatCode array) */
+
+// Auto-start the game on page load (helps when page is opened directly)
+window.addEventListener('load', ()=>{
+  try{
+    // if menu is visible, auto-hide and start the game for convenience
+    const menu = document.getElementById('menu');
+    if(menu && menu.style.display !== 'none'){
+      // small delay so assets initialize
+      setTimeout(()=>{
+        if(typeof startGame === 'function') startGame();
+      }, 300);
+    }
+  }catch(e){ console.warn('auto-start failed', e); }
+});
+
 </script>
 </body>
 </html>
